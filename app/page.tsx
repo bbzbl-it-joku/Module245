@@ -1,55 +1,41 @@
 "use client";
 
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
-import { api } from "../convex/_generated/api";
-import Link from "next/link";
 import { useAuthActions } from "@convex-dev/auth/react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import Image from "next/image";
+import { api } from "../convex/_generated/api";
+import type { Id } from "../convex/_generated/dataModel";
 
 export default function Home() {
   return (
     <>
       <header className="sticky top-0 z-10 bg-background/80 backdrop-blur-md p-4 border-b border-slate-200 dark:border-slate-700 flex flex-row justify-between items-center shadow-sm">
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-3">
-            <Image src="/convex.svg" alt="Convex Logo" width={32} height={32} />
-            <div className="w-px h-8 bg-slate-300 dark:bg-slate-600"></div>
-            <Image
-              src="/nextjs-icon-light-background.svg"
-              alt="Next.js Logo"
-              width={32}
-              height={32}
-              className="dark:hidden"
-            />
-            <Image
-              src="/nextjs-icon-dark-background.svg"
-              alt="Next.js Logo"
-              width={32}
-              height={32}
-              className="hidden dark:block"
-            />
-          </div>
+          <div className="w-2 h-2 rounded-full bg-emerald-500" />
           <h1 className="font-semibold text-slate-800 dark:text-slate-200">
-            Convex + Next.js + Convex Auth
+            StudyCorner
           </h1>
+          <span className="text-xs text-slate-500 dark:text-slate-400">
+            Real-time study rooms
+          </span>
         </div>
-        <SignOutButton />
+        <AuthButton />
       </header>
-      <main className="p-8 flex flex-col gap-8">
+      <main className="p-6 md:p-10 flex flex-col gap-8">
         <Content />
       </main>
     </>
   );
 }
 
-function SignOutButton() {
+function AuthButton() {
   const { isAuthenticated } = useConvexAuth();
   const { signOut } = useAuthActions();
   const router = useRouter();
   return (
     <>
-      {isAuthenticated && (
+      {isAuthenticated ? (
         <button
           className="bg-slate-600 hover:bg-slate-700 dark:bg-slate-700 dark:hover:bg-slate-600 text-white rounded-lg px-4 py-2 text-sm font-medium transition-all duration-200 shadow-sm hover:shadow-md cursor-pointer"
           onClick={() =>
@@ -60,19 +46,47 @@ function SignOutButton() {
         >
           Sign out
         </button>
+      ) : (
+        <button
+          className="bg-slate-800 hover:bg-slate-900 dark:bg-slate-500 dark:hover:bg-slate-400 text-white rounded-lg px-4 py-2 text-sm font-medium transition-all duration-200 shadow-sm hover:shadow-md cursor-pointer"
+          onClick={() => router.push("/signin")}
+        >
+          Sign in
+        </button>
       )}
     </>
   );
 }
 
 function Content() {
-  const { viewer, numbers } =
-    useQuery(api.myFunctions.listNumbers, {
-      count: 10,
-    }) ?? {};
-  const addNumber = useMutation(api.myFunctions.addNumber);
+  const { isAuthenticated } = useConvexAuth();
+  const [search, setSearch] = useState("");
+  const [activeRoomId, setActiveRoomId] = useState<Id<"rooms"> | null>(null);
+  const [roomName, setRoomName] = useState("");
+  const [roomSubject, setRoomSubject] = useState("");
+  const [message, setMessage] = useState("");
+  const rooms = useQuery(api.myFunctions.getRooms, {
+    search,
+  });
+  const messages = useQuery(
+    api.myFunctions.getMessages,
+    activeRoomId ? { roomId: activeRoomId } : "skip",
+  );
+  const createRoom = useMutation(api.myFunctions.createRoom);
+  const sendMessage = useMutation(api.myFunctions.sendMessage);
 
-  if (viewer === undefined || numbers === undefined) {
+  useEffect(() => {
+    if (!activeRoomId && rooms && rooms.length > 0) {
+      setActiveRoomId(rooms[0]._id);
+    }
+  }, [activeRoomId, rooms]);
+
+  const activeRoom = useMemo(
+    () => rooms?.find((room) => room._id === activeRoomId) ?? null,
+    [rooms, activeRoomId],
+  );
+
+  if (!rooms) {
     return (
       <div className="mx-auto">
         <div className="flex items-center gap-2">
@@ -92,143 +106,195 @@ function Content() {
   }
 
   return (
-    <div className="flex flex-col gap-4 max-w-lg mx-auto">
-      <div>
-        <h2 className="font-bold text-xl text-slate-800 dark:text-slate-200">
-          Welcome {viewer ?? "Anonymous"}!
-        </h2>
-        <p className="text-slate-600 dark:text-slate-400 mt-2">
-          You are signed into a demo application using Convex Auth.
-        </p>
-        <p className="text-slate-600 dark:text-slate-400 mt-1">
-          This app can generate random numbers and store them in your Convex
-          database.
-        </p>
-      </div>
-
-      <div className="h-px bg-slate-200 dark:bg-slate-700"></div>
-
-      <div className="flex flex-col gap-4">
-        <h2 className="font-semibold text-xl text-slate-800 dark:text-slate-200">
-          Number generator
-        </h2>
-        <p className="text-slate-600 dark:text-slate-400 text-sm">
-          Click the button below to generate a new number. The data is persisted
-          in the Convex cloud database - open this page in another window and
-          see the data sync automatically!
-        </p>
-        <button
-          className="bg-slate-700 hover:bg-slate-800 dark:bg-slate-600 dark:hover:bg-slate-500 text-white text-sm font-medium px-6 py-3 rounded-lg cursor-pointer transition-all duration-200 shadow-md hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]"
-          onClick={() => {
-            void addNumber({ value: Math.floor(Math.random() * 10) });
-          }}
-        >
-          + Generate random number
-        </button>
-        <div className="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-xl p-4 shadow-sm">
-          <p className="font-semibold text-slate-800 dark:text-slate-200 mb-2">
-            Newest Numbers
+    <div className="grid grid-cols-1 lg:grid-cols-[360px_1fr] gap-6">
+      <section className="flex flex-col gap-6">
+        <div className="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-2xl p-5 shadow-sm">
+          <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100">
+            Create a room
+          </h2>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+            Rooms are public for now. Login is required to create a room.
           </p>
-          <p className="text-slate-700 dark:text-slate-300 font-mono text-lg">
-            {numbers?.length === 0
-              ? "Click the button to generate a number!"
-              : (numbers?.join(", ") ?? "...")}
-          </p>
-        </div>
-      </div>
-
-      <div className="h-px bg-slate-200 dark:bg-slate-700"></div>
-
-      <div className="flex flex-col gap-4">
-        <h2 className="font-semibold text-xl text-slate-800 dark:text-slate-200">
-          Making changes
-        </h2>
-        <p className="text-slate-600 dark:text-slate-400 text-sm">
-          Edit{" "}
-          <code className="text-sm font-semibold font-mono bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 px-2 py-1 rounded-md border border-slate-300 dark:border-slate-600">
-            convex/myFunctions.ts
-          </code>{" "}
-          to change the backend.
-        </p>
-        <p className="text-slate-600 dark:text-slate-400 text-sm">
-          Edit{" "}
-          <code className="text-sm font-semibold font-mono bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 px-2 py-1 rounded-md border border-slate-300 dark:border-slate-600">
-            app/page.tsx
-          </code>{" "}
-          to change the frontend.
-        </p>
-        <p className="text-slate-600 dark:text-slate-400 text-sm">
-          See the{" "}
-          <Link
-            href="/server"
-            className="text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 font-medium underline decoration-2 underline-offset-2 transition-colors"
+          <form
+            className="mt-4 flex flex-col gap-3"
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (!roomName.trim() || !roomSubject.trim()) {
+                return;
+              }
+              void createRoom({
+                name: roomName.trim(),
+                subject: roomSubject.trim(),
+              }).then(() => {
+                setRoomName("");
+                setRoomSubject("");
+              });
+            }}
           >
-            /server route
-          </Link>{" "}
-          for an example of loading data in a server component
-        </p>
-      </div>
-
-      <div className="h-px bg-slate-200 dark:bg-slate-700"></div>
-
-      <div className="flex flex-col gap-4">
-        <h2 className="text-xl font-bold text-slate-800 dark:text-slate-200">
-          Useful resources
-        </h2>
-        <div className="flex gap-4">
-          <div className="flex flex-col gap-4 w-1/2">
-            <ResourceCard
-              title="Convex docs"
-              description="Read comprehensive documentation for all Convex features."
-              href="https://docs.convex.dev/home"
+            <input
+              className="bg-white dark:bg-slate-900 text-foreground rounded-lg p-3 border border-slate-300 dark:border-slate-600 focus:border-slate-500 dark:focus:border-slate-400 focus:ring-2 focus:ring-slate-200 dark:focus:ring-slate-700 outline-none transition-all placeholder:text-slate-400"
+              type="text"
+              placeholder="Room name"
+              value={roomName}
+              onChange={(event) => setRoomName(event.target.value)}
             />
-            <ResourceCard
-              title="Stack articles"
-              description="Learn about best practices, use cases, and more from a growing
-            collection of articles, videos, and walkthroughs."
-              href="https://stack.convex.dev"
+            <input
+              className="bg-white dark:bg-slate-900 text-foreground rounded-lg p-3 border border-slate-300 dark:border-slate-600 focus:border-slate-500 dark:focus:border-slate-400 focus:ring-2 focus:ring-slate-200 dark:focus:ring-slate-700 outline-none transition-all placeholder:text-slate-400"
+              type="text"
+              placeholder="Subject"
+              value={roomSubject}
+              onChange={(event) => setRoomSubject(event.target.value)}
             />
+            <button
+              className="bg-slate-800 hover:bg-slate-900 dark:bg-slate-600 dark:hover:bg-slate-500 text-white font-semibold rounded-lg py-2 shadow-md hover:shadow-lg transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+              type="submit"
+              disabled={!isAuthenticated}
+            >
+              Create room
+            </button>
+          </form>
+          {!isAuthenticated && (
+            <p className="text-xs text-amber-600 dark:text-amber-300 mt-3">
+              Sign in to create rooms and post messages.
+            </p>
+          )}
+        </div>
+
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl p-5 shadow-sm">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100">
+              Rooms
+            </h2>
+            <span className="text-xs text-slate-500 dark:text-slate-400">
+              {rooms.length} total
+            </span>
           </div>
-          <div className="flex flex-col gap-4 w-1/2">
-            <ResourceCard
-              title="Templates"
-              description="Browse our collection of templates to get started quickly."
-              href="https://www.convex.dev/templates"
-            />
-            <ResourceCard
-              title="Discord"
-              description="Join our developer community to ask questions, trade tips & tricks,
-            and show off your projects."
-              href="https://www.convex.dev/community"
-            />
+          <input
+            className="mt-3 w-full bg-white dark:bg-slate-900 text-foreground rounded-lg p-3 border border-slate-300 dark:border-slate-600 focus:border-slate-500 dark:focus:border-slate-400 focus:ring-2 focus:ring-slate-200 dark:focus:ring-slate-700 outline-none transition-all placeholder:text-slate-400"
+            type="text"
+            placeholder="Search rooms"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+          />
+          <div className="mt-4 flex flex-col gap-2 max-h-[420px] overflow-auto">
+            {rooms.length === 0 ? (
+              <div className="text-sm text-slate-500 dark:text-slate-400">
+                No rooms yet. Create the first one.
+              </div>
+            ) : (
+              rooms.map((room) => (
+                <button
+                  key={room._id}
+                  className={`text-left rounded-xl border px-4 py-3 transition-all ${
+                    room._id === activeRoomId
+                      ? "border-emerald-400 bg-emerald-50 dark:bg-emerald-500/10"
+                      : "border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600"
+                  }`}
+                  onClick={() => setActiveRoomId(room._id)}
+                >
+                  <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">
+                    {room.name}
+                  </p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    {room.subject}
+                  </p>
+                </button>
+              ))
+            )}
           </div>
         </div>
-      </div>
-    </div>
-  );
-}
+      </section>
 
-function ResourceCard({
-  title,
-  description,
-  href,
-}: {
-  title: string;
-  description: string;
-  href: string;
-}) {
-  return (
-    <a
-      href={href}
-      className="flex flex-col gap-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 p-5 rounded-xl h-36 overflow-auto border border-slate-300 dark:border-slate-600 hover:border-slate-400 dark:hover:border-slate-500 shadow-sm hover:shadow-md transition-all duration-200 hover:scale-[1.02] group cursor-pointer"
-      target="_blank"
-    >
-      <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-slate-100 transition-colors">
-        {title} →
-      </h3>
-      <p className="text-xs text-slate-600 dark:text-slate-400">
-        {description}
-      </p>
-    </a>
+      <section className="flex flex-col gap-6">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl p-6 shadow-sm flex flex-col gap-4 min-h-[520px]">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100">
+                {activeRoom?.name ?? "Pick a room"}
+              </h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                {activeRoom?.subject ?? "Select a room to start chatting"}
+              </p>
+            </div>
+            <span className="text-xs text-slate-500 dark:text-slate-400">
+              {messages?.length ?? 0} messages
+            </span>
+          </div>
+          <div className="flex-1 overflow-auto border border-slate-200 dark:border-slate-700 rounded-xl p-4 bg-slate-50 dark:bg-slate-800">
+            {activeRoomId && messages ? (
+              messages.length === 0 ? (
+                <p className="text-sm text-slate-500 dark:text-slate-400">
+                  No messages yet. Say hi.
+                </p>
+              ) : (
+                <div className="flex flex-col gap-3">
+                  {messages.map((item) => (
+                    <div
+                      key={item._id}
+                      className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-3"
+                    >
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                          {item.author}
+                        </p>
+                        <p className="text-[10px] text-slate-400">
+                          {new Date(item.timestamp).toLocaleTimeString([], {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </p>
+                      </div>
+                      <p className="text-sm text-slate-700 dark:text-slate-200 mt-2">
+                        {item.content}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )
+            ) : (
+              <p className="text-sm text-slate-500 dark:text-slate-400">
+                Choose a room to load its messages.
+              </p>
+            )}
+          </div>
+          <form
+            className="flex gap-3"
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (!activeRoomId || !message.trim()) {
+                return;
+              }
+              void sendMessage({
+                roomId: activeRoomId,
+                content: message,
+              }).then(() => setMessage(""));
+            }}
+          >
+            <input
+              className="flex-1 bg-white dark:bg-slate-900 text-foreground rounded-lg p-3 border border-slate-300 dark:border-slate-600 focus:border-slate-500 dark:focus:border-slate-400 focus:ring-2 focus:ring-slate-200 dark:focus:ring-slate-700 outline-none transition-all placeholder:text-slate-400"
+              type="text"
+              placeholder={
+                activeRoomId ? "Write a message" : "Select a room first"
+              }
+              value={message}
+              onChange={(event) => setMessage(event.target.value)}
+              disabled={!activeRoomId || !isAuthenticated}
+            />
+            <button
+              className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg px-5 shadow-md hover:shadow-lg transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+              type="submit"
+              disabled={!activeRoomId || !isAuthenticated}
+            >
+              Send
+            </button>
+          </form>
+          {!isAuthenticated && (
+            <p className="text-xs text-amber-600 dark:text-amber-300">
+              Sign in to send messages.
+            </p>
+          )}
+        </div>
+      </section>
+    </div>
   );
 }
