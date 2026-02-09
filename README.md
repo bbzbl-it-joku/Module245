@@ -1,46 +1,57 @@
-# Welcome to your Convex + Next.js + Convex Auth app
+# StudyCorner
 
-This is a [Convex](https://convex.dev/) project created with [`npm create convex`](https://www.npmjs.com/package/create-convex).
+StudyCorner is a real-time chat platform for subject-based school discussions. The MVP focuses on room creation, room discovery, and live messaging.
 
-After the initial setup (<2 minutes) you'll have a working full-stack app using:
+## Tech stack
 
-- Convex as your backend (database, server logic)
-- [React](https://react.dev/) as your frontend (web page interactivity)
-- [Next.js](https://nextjs.org/) for optimized web hosting and page routing
-- [Tailwind](https://tailwindcss.com/) for building great looking accessible UI
-- [Convex Auth](https://labs.convex.dev/auth) for authentication
+- Next.js (App Router) + TypeScript
+- Tailwind CSS
+- Convex (database + real-time functions)
+- Convex Auth (password provider)
 
-## Get started
+## Local development
 
-If you just cloned this codebase and didn't use `npm create convex`, run:
-
-```
-npm install
-npm run dev
-```
-
-If you're reading this README on GitHub and want to use this template, run:
+Install dependencies and run the dev servers:
 
 ```
-npm create convex@latest -- -t nextjs-convexauth
+pnpm install
+pnpm dev
 ```
 
-## Learn more
+## Environment variables
 
-To learn more about developing your project with Convex, check out:
+Copy [.env.example](.env.example) to `.env.local` and fill in values.
 
-- The [Tour of Convex](https://docs.convex.dev/get-started) for a thorough introduction to Convex principles.
-- The rest of [Convex docs](https://docs.convex.dev/) to learn about all Convex features.
-- [Stack](https://stack.convex.dev/) for in-depth articles on advanced topics.
-- [Convex Auth docs](https://labs.convex.dev/auth) for documentation on the Convex Auth library.
+| Variable | Purpose |
+| --- | --- |
+| `NEXT_PUBLIC_CONVEX_URL` | Convex deployment URL used by the client |
+| `CONVEX_SITE_URL` | Public URL used by Convex Auth (e.g. http://localhost:3000) |
+| `CONVEX_DEPLOY_KEY` | Convex deploy key for preview/production |
+| `JWT_PRIVATE_KEY` | Private key for Convex Auth JWT signing |
+| `JWKS` | Public JWKS JSON for Convex Auth |
 
-## Configuring other authentication methods
+Generate keys with `node generateKeys.mjs` or the `npx @convex-dev/auth` helper.
 
-To configure different authentication methods, see [Configuration](https://labs.convex.dev/auth/config) in the Convex Auth docs.
+## Data model
 
-## Join the community
+- Rooms: name, subject, createdBy, createdAt
+- Messages: roomId, userId, content, timestamp
+- Memberships: roomId, userId, joinedAt
 
-Join thousands of developers building full-stack apps with Convex:
+See [convex/schema.ts](convex/schema.ts).
 
-- Join the [Convex Discord community](https://convex.dev/community) to get help in real-time.
-- Follow [Convex on GitHub](https://github.com/get-convex/), star and contribute to the open-source implementation of Convex.
+## Deployment checklist
+
+- Configure env vars in Vercel and Convex Cloud
+- Set `NEXT_PUBLIC_CONVEX_URL` to the deployed Convex URL
+- Set `CONVEX_SITE_URL` to the deployed web URL
+- Add `CONVEX_DEPLOY_KEY` for production deploys
+- Verify Convex Auth keys are configured (`JWT_PRIVATE_KEY`, `JWKS`)
+- Run smoke tests (see below)
+
+## Smoke tests
+
+- Register or sign in
+- Create a room
+- Verify the room appears in the list
+- Send a message and confirm real-time update in a second browser window

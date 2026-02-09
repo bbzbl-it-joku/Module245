@@ -1,9 +1,12 @@
 "use client";
 
 import { useAuthActions } from "@convex-dev/auth/react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import Image from "next/image";
+
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 export default function SignIn() {
   const { signIn } = useAuthActions();
@@ -12,107 +15,133 @@ export default function SignIn() {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   return (
-    <div className="flex flex-col gap-8 w-full max-w-lg mx-auto h-screen justify-center items-center px-4">
-      <div className="text-center flex flex-col items-center gap-4">
-        <div className="flex items-center gap-6">
-          <Image
-            src="/convex.svg"
-            alt="Convex Logo"
-            width={90}
-            height={90}
-          />
-          <div className="w-px h-20 bg-slate-300 dark:bg-slate-600"></div>
-          <Image
-            src="/nextjs-icon-light-background.svg"
-            alt="Next.js Logo"
-            width={90}
-            height={90}
-            className="dark:hidden"
-          />
-          <Image
-            src="/nextjs-icon-dark-background.svg"
-            alt="Next.js Logo"
-            width={90}
-            height={90}
-            className="hidden dark:block"
-          />
+    <div className="relative min-h-screen overflow-hidden bg-linear-to-br from-amber-50 via-slate-50 to-emerald-50 text-slate-900">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -left-24 top-24 h-64 w-64 rounded-full bg-amber-200/50 blur-3xl"
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute right-0 top-0 h-80 w-80 -translate-y-1/3 translate-x-1/4 rounded-full bg-emerald-200/40 blur-3xl"
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute bottom-0 left-1/3 h-72 w-72 -translate-x-1/2 translate-y-1/3 rounded-full bg-slate-200/50 blur-3xl"
+      />
+
+      <header className="relative z-10 border-b border-slate-200/80 bg-white/70 backdrop-blur">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
+          <div className="flex items-center gap-3">
+            <span className="h-2 w-2 rounded-full bg-emerald-600" />
+            <span className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-700">
+              StudyCorner
+            </span>
+          </div>
+          <div className="flex items-center gap-3">
+            <Link
+              href="/"
+              className="text-sm font-semibold text-slate-700 transition hover:text-slate-900"
+            >
+              Back home
+            </Link>
+            <Link
+              href="/app"
+              className="rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold uppercase tracking-widest text-white shadow-lg shadow-slate-900/20 transition hover:-translate-y-0.5"
+            >
+              Open app
+            </Link>
+          </div>
         </div>
-        <h1 className="text-3xl font-bold text-slate-800 dark:text-slate-200">
-          Convex + Next.js + Convex Auth
-        </h1>
-        <p className="text-slate-600 dark:text-slate-400">
-          This demo uses Convex Auth for authentication, so you will need to
-          sign in or sign up to access the demo.
-        </p>
-      </div>
-      <form
-        className="flex flex-col gap-4 w-full bg-slate-100 dark:bg-slate-800 p-8 rounded-2xl shadow-xl border border-slate-300 dark:border-slate-600"
-        onSubmit={(e) => {
-          e.preventDefault();
-          setLoading(true);
-          setError(null);
-          const formData = new FormData(e.target as HTMLFormElement);
-          formData.set("flow", flow);
-          void signIn("password", formData)
-            .catch((error) => {
-              setError(error.message);
-              setLoading(false);
-            })
-            .then(() => {
-              router.push("/");
-            });
-        }}
-      >
-        <input
-          className="bg-white dark:bg-slate-900 text-foreground rounded-lg p-3 border border-slate-300 dark:border-slate-600 focus:border-slate-500 dark:focus:border-slate-400 focus:ring-2 focus:ring-slate-200 dark:focus:ring-slate-700 outline-none transition-all placeholder:text-slate-400"
-          type="email"
-          name="email"
-          placeholder="Email"
-          required
-        />
-        <div className="flex flex-col gap-1">
-          <input
-            className="bg-white dark:bg-slate-900 text-foreground rounded-lg p-3 border border-slate-300 dark:border-slate-600 focus:border-slate-500 dark:focus:border-slate-400 focus:ring-2 focus:ring-slate-200 dark:focus:ring-slate-700 outline-none transition-all placeholder:text-slate-400"
-            type="password"
-            name="password"
-            placeholder="Password"
-            minLength={8}
-            required
-          />
-          {flow === "signUp" && (
-            <p className="text-xs text-slate-500 dark:text-slate-400 px-1">
-              Password must be at least 8 characters
+      </header>
+
+      <main className="relative z-10 mx-auto flex max-w-6xl flex-col items-center px-6 py-16">
+        <section className="w-full max-w-lg">
+          <div className="text-center flex flex-col items-center gap-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.3em] text-emerald-700">
+              Welcome back
             </p>
-          )}
-        </div>
-        <button
-          className="bg-slate-700 hover:bg-slate-800 dark:bg-slate-600 dark:hover:bg-slate-500 text-white font-semibold rounded-lg py-3 shadow-md hover:shadow-lg transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
-          type="submit"
-          disabled={loading}
-        >
-          {loading ? "Loading..." : flow === "signIn" ? "Sign in" : "Sign up"}
-        </button>
-        <div className="flex flex-row gap-2 text-sm justify-center">
-          <span className="text-slate-600 dark:text-slate-400">
-            {flow === "signIn"
-              ? "Don't have an account?"
-              : "Already have an account?"}
-          </span>
-          <span
-            className="text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 font-medium underline decoration-2 underline-offset-2 hover:no-underline cursor-pointer transition-colors"
-            onClick={() => setFlow(flow === "signIn" ? "signUp" : "signIn")}
-          >
-            {flow === "signIn" ? "Sign up" : "Sign in"}
-          </span>
-        </div>
-        {error && (
-          <div className="bg-rose-500/10 border border-rose-500/30 dark:border-rose-500/50 rounded-lg p-4">
-            <p className="text-rose-700 dark:text-rose-300 font-medium text-sm break-words">
-              Error: {error}
+            <h1 className="text-3xl font-semibold text-slate-900 md:text-4xl">
+              Continue the StudyCorner flow.
+            </h1>
+            <p className="text-slate-600">
+              Sign in to join rooms, follow subjects, and keep the study flow
+              live.
             </p>
           </div>
-        )}
-      </form>
+          <form
+            className="mt-8 flex flex-col gap-4 rounded-3xl border border-slate-200 bg-white/70 p-8 shadow-xl shadow-slate-900/5"
+            onSubmit={(e) => {
+              e.preventDefault();
+              setLoading(true);
+              setError(null);
+              const formData = new FormData(e.target as HTMLFormElement);
+              formData.set("flow", flow);
+              void signIn("password", formData)
+                .catch((error) => {
+                  setError(error.message);
+                  setLoading(false);
+                })
+                .then(() => {
+                  router.push("/app");
+                });
+            }}
+          >
+            <Input
+              type="email"
+              name="email"
+              placeholder="Email"
+              required
+            />
+            <div className="flex flex-col gap-1">
+              <Input
+                type="password"
+                name="password"
+                placeholder="Password"
+                minLength={8}
+                required
+              />
+              {flow === "signUp" && (
+                <p className="text-xs text-slate-500 px-1">
+                  Password must be at least 8 characters
+                </p>
+              )}
+            </div>
+            <Button
+              variant="emerald"
+              className="h-12 w-full rounded-2xl text-sm font-semibold"
+              type="submit"
+              disabled={loading}
+            >
+              {loading
+                ? "Loading..."
+                : flow === "signIn"
+                  ? "Sign in"
+                  : "Create account"}
+            </Button>
+            <div className="flex flex-wrap items-center justify-center gap-2 text-sm">
+              <span className="text-slate-600">
+                {flow === "signIn"
+                  ? "Don't have an account?"
+                  : "Already have an account?"}
+              </span>
+              <button
+                type="button"
+                className="font-semibold text-slate-700 underline decoration-2 underline-offset-2 transition hover:text-slate-900 hover:no-underline"
+                onClick={() => setFlow(flow === "signIn" ? "signUp" : "signIn")}
+              >
+                {flow === "signIn" ? "Sign up" : "Sign in"}
+              </button>
+            </div>
+            {error && (
+              <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4">
+                <p className="text-sm font-medium text-rose-700">
+                  Error: {error}
+                </p>
+              </div>
+            )}
+          </form>
+        </section>
+      </main>
     </div>
   );
 }
