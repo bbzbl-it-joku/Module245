@@ -1,81 +1,109 @@
 import { v } from "convex/values";
-import { query, mutation, action } from "./_generated/server";
-import { api } from "./_generated/api";
+import { query, mutation } from "./_generated/server";
+import type { MutationCtx } from "./_generated/server";
+import type { Doc, Id } from "./_generated/dataModel";
 import { getAuthUserId } from "@convex-dev/auth/server";
 
-// Write your Convex functions in any file inside this directory (`convex`).
-// See https://docs.convex.dev/functions for more.
+async function requireUser(ctx: MutationCtx): Promise<{ _id: any; email?: string } > {
+  const userId = await getAuthUserId(ctx);
+  if (!userId) {
+    throw new Error("Unauthorized");
+  }
+  const user = await ctx.db.get("users", userId);
+  if (!user) {
+    throw new Error("Unauthorized");
+  }
+  return user;
+}
 
-// You can read data from the database via a query:
-export const listNumbers = query({
-  // Validators for arguments.
+export const getRooms = query({
   args: {
-    count: v.number(),
+    search: v.optional(v.string()),
   },
-
-  // Query implementation.
   handler: async (ctx, args) => {
-    //// Read the database as many times as you need here.
-    //// See https://docs.convex.dev/database/reading-data.
-    const numbers = await ctx.db
-      .query("numbers")
-      // Ordered by _creationTime, return most recent
+    const rooms = await ctx.db.query("rooms").order("desc").take(100);
+    const search = args.search?.trim().toLowerCase();
+    const filtered = search
+      ? rooms.filter((room) =>
+          `${room.name} ${room.subject}`.toLowerCase().includes(search),
+        )
+      : rooms;
+    return filtered.map((room) => ({
+      _id: room._id,
+      name: room.name,
+      subject: room.subject,
+      createdAt: room.createdAt,
+      createdBy: room.createdBy,
+    }));
+  },
+});
+
+export const getMessages = query({
+  args: {
+    roomId: v.id("rooms"),
+  },
+  handler: async (ctx, args) => {
+    const messages = await ctx.db
+      .query("messages")
+      .withIndex("by_roomId", (q) => q.eq("roomId", args.roomId))
       .order("desc")
-      .take(args.count);
-    const userId = await getAuthUserId(ctx);
-    const user = userId === null ? null : await ctx.db.get("users", userId);
-    return {
-      viewer: user?.email ?? null,
-      numbers: numbers.reverse().map((number) => number.value),
-    };
+      .take(100);
+    const ordered = messages.reverse();
+    const uniqueUserIds = Array.from(
+      new Set(ordered.map((message) => message.userId)),
+    ) as Id<"users">[];
+    const userMap = new Map<Id<"users">, Doc<"users"> | null>();
+    for (const userId of uniqueUserIds) {
+      const user = await ctx.db.get("users", userId);
+      userMap.set(userId, user);
+    }
+    return ordered.map((message) => ({
+      _id: message._id,
+      content: message.content,
+      timestamp: message.timestamp,
+      userId: message.userId,
+      author: userMap.get(message.userId)?.email ?? "Unknown",
+    }));
   },
 });
 
-// You can write data to the database via a mutation:
-export const addNumber = mutation({
-  // Validators for arguments.
+export const createRoom = mutation({
   args: {
-    value: v.number(),
+    name: v.string(),
+    subject: v.string(),
   },
-
-  // Mutation implementation.
   handler: async (ctx, args) => {
-    //// Insert or modify documents in the database here.
-    //// Mutations can also read from the database like queries.
-    //// See https://docs.convex.dev/database/writing-data.
-
-    const id = await ctx.db.insert("numbers", { value: args.value });
-
-    console.log("Added new document with id:", id);
-    // Optionally, return a value from your mutation.
-    // return id;
-  },
-});
-
-// You can fetch data from and send data to third-party APIs via an action:
-export const myAction = action({
-  // Validators for arguments.
-  args: {
-    first: v.number(),
-    second: v.string(),
-  },
-
-  // Action implementation.
-  handler: async (ctx, args) => {
-    //// Use the browser-like `fetch` API to send HTTP requests.
-    //// See https://docs.convex.dev/functions/actions#calling-third-party-apis-and-using-npm-packages.
-    // const response = await ctx.fetch("https://api.thirdpartyservice.com");
-    // const data = await response.json();
-
-    //// Query data by running Convex queries.
-    const data = await ctx.runQuery(api.myFunctions.listNumbers, {
-      count: 10,
+    const user = await requireUser(ctx);
+    const now = Date.now();
+    return await ctx.db.insert("rooms", {
+      name: args.name.trim(),
+      subject: args.subject.trim(),
+      createdBy: user._id,
+      createdAt: now,
     });
-    console.log(data);
+  },
+});
 
-    //// Write data by running Convex mutations.
-    await ctx.runMutation(api.myFunctions.addNumber, {
-      value: args.first,
+export const sendMessage = mutation({
+  args: {
+    roomId: v.id("rooms"),
+    content: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const user = await requireUser(ctx);
+    const room = await ctx.db.get("rooms", args.roomId);
+    if (!room) {
+      throw new Error("Room not found");
+    }
+    const message = args.content.trim();
+    if (!message) {
+      throw new Error("Message is empty");
+    }
+    return await ctx.db.insert("messages", {
+      roomId: args.roomId,
+      userId: user._id,
+      content: message,
+      timestamp: Date.now(),
     });
   },
 });
