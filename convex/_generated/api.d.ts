@@ -10,7 +10,10 @@
 
 import type * as auth from "../auth.js";
 import type * as http from "../http.js";
-import type * as myFunctions from "../myFunctions.js";
+import type * as lib_requireUser from "../lib/requireUser.js";
+import type * as memberships from "../memberships.js";
+import type * as messages from "../messages.js";
+import type * as rooms from "../rooms.js";
 
 import type {
   ApiFromModules,
@@ -21,7 +24,10 @@ import type {
 declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   http: typeof http;
-  myFunctions: typeof myFunctions;
+  "lib/requireUser": typeof lib_requireUser;
+  memberships: typeof memberships;
+  messages: typeof messages;
+  rooms: typeof rooms;
 }>;
 
 /**
