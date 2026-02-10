@@ -7,7 +7,7 @@ import {
 const isSignInPage = createRouteMatcher(["/signin"]);
 const isProtectedRoute = createRouteMatcher(["/app"]);
 
-export default convexAuthNextjsMiddleware(async (request, { convexAuth }) => {
+export const proxy = convexAuthNextjsMiddleware(async (request, { convexAuth }) => {
   if (isSignInPage(request) && (await convexAuth.isAuthenticated())) {
     return nextjsMiddlewareRedirect(request, "/app");
   }
