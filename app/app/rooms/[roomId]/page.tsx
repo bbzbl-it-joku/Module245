@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useParams } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 
 export default function RoomChatPage() {
   const params = useParams<{ roomId: string }>();
+  const router = useRouter();
   const roomId = params.roomId as Id<"rooms">;
   const [message, setMessage] = useState("");
 
@@ -35,6 +36,13 @@ export default function RoomChatPage() {
     messagesResult?.isMember ?? joinedRoomIds.has(roomId),
   );
   const messages = messagesResult?.messages ?? [];
+  const shouldRedirect = Boolean(activeRoom && memberships && !isMember);
+
+  useEffect(() => {
+    if (shouldRedirect) {
+      router.replace("/app/rooms");
+    }
+  }, [router, shouldRedirect]);
 
   if (!rooms) {
     return (
@@ -45,6 +53,10 @@ export default function RoomChatPage() {
         <span className="text-sm">Loading room...</span>
       </div>
     );
+  }
+
+  if (shouldRedirect) {
+    return null;
   }
 
   if (!activeRoom) {
