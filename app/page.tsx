@@ -1,6 +1,12 @@
+"use client";
+
 import Link from "next/link";
+import { useConvexAuth } from "convex/react";
 
 export default function Home() {
+  const { isAuthenticated, isLoading } = useConvexAuth();
+  const showSignIn = !isLoading && !isAuthenticated;
+
   return (
     <div className="relative min-h-screen overflow-hidden bg-linear-to-br from-amber-50 via-slate-50 to-emerald-50 text-slate-900">
       <div
@@ -25,12 +31,14 @@ export default function Home() {
             </span>
           </div>
           <div className="flex items-center gap-3">
-            <Link
-              href="/signin"
-              className="text-sm font-semibold text-slate-700 transition hover:text-slate-900"
-            >
-              Sign in
-            </Link>
+            {showSignIn && (
+              <Link
+                href="/signin"
+                className="text-sm font-semibold text-slate-700 transition hover:text-slate-900"
+              >
+                Sign in
+              </Link>
+            )}
             <Link
               href="/app"
               className="rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold uppercase tracking-widest text-white shadow-lg shadow-slate-900/20 transition hover:-translate-y-0.5"
@@ -56,12 +64,14 @@ export default function Home() {
               leaving the flow of the lesson.
             </p>
             <div className="mt-8 flex flex-wrap items-center gap-3">
-              <Link
-                href="/signin"
-                className="rounded-full bg-emerald-600 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-emerald-600/30 transition hover:-translate-y-0.5"
-              >
-                Get started
-              </Link>
+              {showSignIn && (
+                <Link
+                  href="/signin"
+                  className="rounded-full bg-emerald-600 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-emerald-600/30 transition hover:-translate-y-0.5"
+                >
+                  Get started
+                </Link>
+              )}
               <Link
                 href="/app"
                 className="rounded-full border border-slate-300 bg-white/60 px-6 py-3 text-sm font-semibold text-slate-700 transition hover:border-slate-400"
@@ -86,9 +96,9 @@ export default function Home() {
             </div>
             <div className="mt-6 space-y-4">
               {[
-                { title: "Physics: Waves", note: "12 students active" },
-                { title: "Math: Derivatives", note: "7 students active" },
-                { title: "History: WWI", note: "4 students active" },
+                { title: "Physics: Waves" },
+                { title: "Math: Derivatives" },
+                { title: "History: WWI" },
               ].map((room) => (
                 <div
                   key={room.title}
@@ -97,7 +107,6 @@ export default function Home() {
                   <p className="text-sm font-semibold text-slate-900">
                     {room.title}
                   </p>
-                  <p className="mt-1 text-xs text-slate-500">{room.note}</p>
                 </div>
               ))}
             </div>
@@ -148,12 +157,14 @@ export default function Home() {
               </p>
             </div>
             <div className="flex flex-col gap-3">
-              <Link
-                href="/signin"
-                className="rounded-full bg-white px-6 py-3 text-center text-sm font-semibold text-slate-900"
-              >
-                Start with your class
-              </Link>
+              {showSignIn && (
+                <Link
+                  href="/signin"
+                  className="rounded-full bg-white px-6 py-3 text-center text-sm font-semibold text-slate-900"
+                >
+                  Start with your class
+                </Link>
+              )}
               <Link
                 href="/app"
                 className="rounded-full border border-white/40 px-6 py-3 text-center text-sm font-semibold text-white"
