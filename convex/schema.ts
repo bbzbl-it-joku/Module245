@@ -31,4 +31,8 @@ export default defineSchema({
     .index("by_roomId", ["roomId"])
     .index("by_userId", ["userId"])
     .index("by_roomId_userId", ["roomId", "userId"]),
+  admins: defineTable({
+    userId: v.id("users"),
+    createdAt: v.number(),
+  }).index("by_userId", ["userId"]),
 });

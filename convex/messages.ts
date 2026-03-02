@@ -1,20 +1,29 @@
 import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
+import type { QueryCtx } from "./_generated/server";
 import { mutation, query } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
 import { requireUser } from "./lib/requireUser";
 
 async function getMembership(
-  ctx: { db: { query: any } },
+  ctx: { db: QueryCtx["db"] },
   roomId: Id<"rooms">,
   userId: Id<"users">,
 ) {
   return await ctx.db
     .query("memberships")
-    .withIndex("by_roomId_userId", (q: any) =>
+    .withIndex("by_roomId_userId", (q) =>
       q.eq("roomId", roomId).eq("userId", userId),
     )
     .unique();
+}
+
+async function isAdminUser(ctx: { db: QueryCtx["db"] }, userId: Id<"users">) {
+  const admin = await ctx.db
+    .query("admins")
+    .withIndex("by_userId", (q) => q.eq("userId", userId))
+    .unique();
+  return Boolean(admin);
 }
 
 export const getMessages = query({
@@ -24,11 +33,22 @@ export const getMessages = query({
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
     if (!userId) {
-      return { isMember: false, messages: [] };
+      return {
+        isMember: false,
+        isAdmin: false,
+        currentUserId: null,
+        messages: [],
+      };
     }
+    const isAdmin = await isAdminUser(ctx, userId);
     const membership = await getMembership(ctx, args.roomId, userId);
-    if (!membership) {
-      return { isMember: false, messages: [] };
+    if (!membership && !isAdmin) {
+      return {
+        isMember: false,
+        isAdmin,
+        currentUserId: userId,
+        messages: [],
+      };
     }
     const messages = await ctx.db
       .query("messages")
@@ -45,7 +65,9 @@ export const getMessages = query({
       userMap.set(userId, author);
     }
     return {
-      isMember: true,
+      isMember: Boolean(membership),
+      isAdmin,
+      currentUserId: userId,
       messages: ordered.map((message) => ({
         _id: message._id,
         content: message.content,
@@ -82,5 +104,24 @@ export const sendMessage = mutation({
       content: message,
       timestamp: Date.now(),
     });
+  },
+});
+
+export const deleteMessage = mutation({
+  args: {
+    messageId: v.id("messages"),
+  },
+  handler: async (ctx, args) => {
+    const user = await requireUser(ctx);
+    const message = await ctx.db.get("messages", args.messageId);
+    if (!message) {
+      throw new Error("Message not found");
+    }
+    const isAdmin = await isAdminUser(ctx, user._id);
+    if (!isAdmin && message.userId !== user._id) {
+      throw new Error("Forbidden");
+    }
+    await ctx.db.delete(args.messageId);
+    return args.messageId;
   },
 });

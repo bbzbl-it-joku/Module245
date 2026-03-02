@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import type { ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useAuthActions } from "@convex-dev/auth/react";
-import { useConvexAuth } from "convex/react";
+import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import { Button } from "@/components/ui/button";
+import { api } from "@/convex/_generated/api";
 
 export default function AppLayout({
   children,
@@ -13,6 +14,24 @@ export default function AppLayout({
   children: ReactNode;
 }) {
   const { isAuthenticated, isLoading } = useConvexAuth();
+  const ensureFirstAdmin = useMutation(api.admin.ensureFirstAdmin);
+  const didEnsureAdmin = useRef(false);
+  const [adminSetupError, setAdminSetupError] = useState<string | null>(null);
+  const isAdmin = useQuery(
+    api.admin.isAdmin,
+    isAuthenticated ? {} : "skip",
+  );
+  const showAdminLink = isAdmin === true;
+
+  useEffect(() => {
+    if (!isAuthenticated || didEnsureAdmin.current) {
+      return;
+    }
+    didEnsureAdmin.current = true;
+    void ensureFirstAdmin({}).catch((error) => {
+      setAdminSetupError(error instanceof Error ? error.message : String(error));
+    });
+  }, [ensureFirstAdmin, isAuthenticated]);
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-linear-to-br from-amber-50 via-slate-50 to-emerald-50 text-slate-900">
@@ -40,14 +59,32 @@ export default function AppLayout({
               StudyCorner
             </Link>
           </div>
-          <SignOutButton />
+          <div className="flex items-center gap-3">
+            {showAdminLink && (
+              <Link
+                href="/app/admin"
+                className="text-xs font-semibold uppercase tracking-widest text-slate-700 transition hover:text-slate-900"
+              >
+                Admin
+              </Link>
+            )}
+            <SignOutButton />
+          </div>
         </div>
       </header>
       <main className="relative z-10 mx-auto flex max-w-6xl flex-col gap-6 px-6 py-10">
         {isLoading ? (
           <LoadingState label="Loading session..." />
         ) : isAuthenticated ? (
-          children
+          <>
+            {adminSetupError && (
+              <section className="rounded-3xl border border-amber-200 bg-amber-50/80 p-4 text-amber-900 shadow-sm">
+                <p className="text-sm font-semibold">Admin setup failed</p>
+                <p className="text-xs text-amber-700">{adminSetupError}</p>
+              </section>
+            )}
+            {children}
+          </>
         ) : (
           <SignInRequired />
         )}

@@ -22,6 +22,7 @@ export default function RoomChatPage() {
   const joinRoom = useMutation(api.memberships.joinRoom);
   const leaveRoom = useMutation(api.memberships.leaveRoom);
   const sendMessage = useMutation(api.messages.sendMessage);
+  const deleteMessage = useMutation(api.messages.deleteMessage);
 
   const joinedRoomIds = useMemo(
     () => new Set(memberships ?? []),
@@ -35,8 +36,13 @@ export default function RoomChatPage() {
   const isMember = Boolean(
     messagesResult?.isMember ?? joinedRoomIds.has(roomId),
   );
+  const isAdmin = Boolean(messagesResult?.isAdmin);
+  const currentUserId = messagesResult?.currentUserId ?? null;
+  const canAccess = isAdmin || isMember;
   const messages = messagesResult?.messages ?? [];
-  const shouldRedirect = Boolean(activeRoom && memberships && !isMember);
+  const shouldRedirect = Boolean(
+    activeRoom && memberships && messagesResult && !canAccess,
+  );
 
   useEffect(() => {
     if (shouldRedirect) {
@@ -116,32 +122,50 @@ export default function RoomChatPage() {
 
       <div className="flex min-h-130 flex-col gap-4 rounded-3xl border border-slate-200 bg-white/70 p-6 shadow-xl shadow-slate-900/5">
         <div className="flex-1 overflow-auto rounded-2xl border border-slate-200 bg-white/80 p-4">
-          {isMember ? (
+          {canAccess ? (
             messages.length === 0 ? (
               <p className="text-sm text-slate-500">No messages yet.</p>
             ) : (
               <div className="flex flex-col gap-3">
-                {messages.map((item) => (
-                  <div
-                    key={item._id}
-                    className="rounded-xl border border-slate-200 bg-white p-3"
-                  >
-                    <div className="flex items-center justify-between">
-                      <p className="text-xs font-semibold text-slate-700">
-                        {item.author}
-                      </p>
-                      <p className="text-[10px] text-slate-400">
-                        {new Date(item.timestamp).toLocaleTimeString([], {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
+                {messages.map((item) => {
+                  const canDelete =
+                    isAdmin || (currentUserId && item.userId === currentUserId);
+                  return (
+                    <div
+                      key={item._id}
+                      className="rounded-xl border border-slate-200 bg-white p-3"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-xs font-semibold text-slate-700">
+                          {item.author}
+                        </p>
+                        <div className="flex items-center gap-2">
+                          <p className="text-[10px] text-slate-400">
+                            {new Date(item.timestamp).toLocaleTimeString([], {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </p>
+                          {canDelete && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 px-2 text-[10px]"
+                              onClick={() =>
+                                void deleteMessage({ messageId: item._id })
+                              }
+                            >
+                              Delete
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                      <p className="mt-2 text-sm text-slate-700">
+                        {item.content}
                       </p>
                     </div>
-                    <p className="mt-2 text-sm text-slate-700">
-                      {item.content}
-                    </p>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )
           ) : (

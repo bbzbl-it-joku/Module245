@@ -8,8 +8,10 @@
  * @module
  */
 
+import type * as admin from "../admin.js";
 import type * as auth from "../auth.js";
 import type * as http from "../http.js";
+import type * as lib_requireAdmin from "../lib/requireAdmin.js";
 import type * as lib_requireUser from "../lib/requireUser.js";
 import type * as memberships from "../memberships.js";
 import type * as messages from "../messages.js";
@@ -22,8 +24,10 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  admin: typeof admin;
   auth: typeof auth;
   http: typeof http;
+  "lib/requireAdmin": typeof lib_requireAdmin;
   "lib/requireUser": typeof lib_requireUser;
   memberships: typeof memberships;
   messages: typeof messages;
