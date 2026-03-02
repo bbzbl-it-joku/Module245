@@ -14,13 +14,26 @@ export const getRooms = query({
           `${room.name} ${room.subject}`.toLowerCase().includes(search),
         )
       : rooms;
-    return filtered.map((room) => ({
-      _id: room._id,
-      name: room.name,
-      subject: room.subject,
-      createdAt: room.createdAt,
-      createdBy: room.createdBy,
-    }));
+
+    const roomsWithCounts = await Promise.all(
+      filtered.map(async (room) => {
+        const memberships = await ctx.db
+          .query("memberships")
+          .withIndex("by_roomId", (q) => q.eq("roomId", room._id))
+          .collect();
+
+        return {
+          _id: room._id,
+          name: room.name,
+          subject: room.subject,
+          createdAt: room.createdAt,
+          createdBy: room.createdBy,
+          memberCount: memberships.length,
+        };
+      }),
+    );
+
+    return roomsWithCounts;
   },
 });
 
