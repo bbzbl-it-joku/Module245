@@ -42,5 +42,4 @@ This document records what was delivered during the three qualifying weeks and w
 ## Versioning pointers
 
 - `main` is always deployable; feature work happens on short-lived `feat/*` branches that reference GitHub issues.
-- Tags (`v0.1.0`, `qw8-handoff`, etc.) mark the end of each qualifying week for quick diffs.
 - Use `git log --graph --decorate --oneline main --since "2026-02-10"` to demonstrate the incremental Git history required for the versioning rubric point.
