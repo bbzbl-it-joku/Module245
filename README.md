@@ -111,7 +111,7 @@ See [convex/schema.ts](convex/schema.ts). Rooms are public in the MVP, realtime 
 
 ## Agile process evidence (QW6-8)
 
-Sprint notes, linked issues, and supporting commits for each qualifying week are captured in [docs/process.md](docs/process.md). Use the referenced GitHub Project board and PR links to demonstrate continuous delivery for the rubric.
+Sprint notes and supporting commits for each qualifying week are captured in [docs/process.md](docs/process.md). We rely on disciplined Git history (feature branches + conventional commits) instead of a project board to demonstrate continuous delivery for the rubric.
 
 ## Versioning
 

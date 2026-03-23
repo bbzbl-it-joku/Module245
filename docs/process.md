@@ -4,8 +4,8 @@ This document records what was delivered during the three qualifying weeks and w
 
 ## Evidence capture workflow
 
-- Tasks are tracked as GitHub Issues labeled `qw6`, `qw7`, or `qw8` and grouped on the "StudyCorner QW6-8" project board.
-- Each pull request references the related issues and uses the `feat/<topic>` naming convention so the Git history stays readable.
+- Work is tracked directly in Git using conventional commits on short-lived `feat/*` branches (no project board required).
+- Each pull request describes the qualifying-week scope so the Git history stays readable.
 - To list the commits for a given week locally, run e.g. `git log --oneline --decorate --since "2026-02-17" --until "2026-02-23"` (adjust dates per week).
 
 ## QW6 – Foundations & authentication
@@ -17,7 +17,7 @@ This document records what was delivered during the three qualifying weeks and w
 **Evidence**
 - [PR #3 – feat/landing-auth-links](https://github.com/bbzbl-it-joku/Module245/pull/3): Adds the landing page CTA, sign-in links, and wiring for Convex Auth.
 - Commit `81a64f4` ("feat: add redirection logic for non-member users in RoomChatPage") secures the room route for authenticated users.
-- Issues tagged `qw6` on the project board cover schema validation and auth UX tasks.
+- Additional QW6 commits follow the conventional `feat:` prefix; inspect `git log --since "2026-02-10" --until "2026-02-16"` for the full list.
 
 ## QW7 – Rooms list & realtime messaging
 
@@ -27,7 +27,7 @@ This document records what was delivered during the three qualifying weeks and w
 
 **Evidence**
 - [PR #4 – feat/rooms-routing-member-counts](https://github.com/bbzbl-it-joku/Module245/pull/4): Introduces the dedicated rooms routes, browse page, and member count query.
-- Commit `64591d4` (merge of PR #4) plus linked issues labeled `qw7` describe the realtime chat integration work.
+- Commit `64591d4` (merge of PR #4) plus the surrounding `feat:` commits in `git log --since "2026-02-17" --until "2026-02-23"` document the realtime chat integration work.
 
 ## QW8 – Moderation, admin, and deployment
 
