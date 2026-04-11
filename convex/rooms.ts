@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import type { Id } from "./_generated/dataModel";
 import { requireUser } from "./lib/requireUser";
 
 export const getRooms = query({
@@ -15,23 +16,27 @@ export const getRooms = query({
         )
       : rooms;
 
-    const roomsWithCounts = await Promise.all(
-      filtered.map(async (room) => {
-        const memberships = await ctx.db
-          .query("memberships")
-          .withIndex("by_roomId", (q) => q.eq("roomId", room._id))
-          .collect();
+    const filteredRoomIds = new Set(filtered.map((room) => room._id));
+    const membershipCounts = new Map<Id<"rooms">, number>();
+    const memberships = await ctx.db.query("memberships").collect();
+    for (const membership of memberships) {
+      if (!filteredRoomIds.has(membership.roomId)) {
+        continue;
+      }
+      membershipCounts.set(
+        membership.roomId,
+        (membershipCounts.get(membership.roomId) ?? 0) + 1,
+      );
+    }
 
-        return {
-          _id: room._id,
-          name: room.name,
-          subject: room.subject,
-          createdAt: room.createdAt,
-          createdBy: room.createdBy,
-          memberCount: memberships.length,
-        };
-      }),
-    );
+    const roomsWithCounts = filtered.map((room) => ({
+      _id: room._id,
+      name: room.name,
+      subject: room.subject,
+      createdAt: room.createdAt,
+      createdBy: room.createdBy,
+      memberCount: membershipCounts.get(room._id) ?? 0,
+    }));
 
     return roomsWithCounts.sort((a, b) => {
       if (b.memberCount !== a.memberCount) {

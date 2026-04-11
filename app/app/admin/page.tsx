@@ -14,8 +14,10 @@ export default function AdminPage() {
   const setAdminStatus = useMutation(api.admin.setAdminStatus);
   const deleteUser = useMutation(api.admin.deleteUser);
   const deleteRoom = useMutation(api.admin.deleteRoom);
+  const prepareDemoData = useMutation(api.admin.prepareDemoData);
   const createDemoRooms = useMutation(api.admin.createDemoRooms);
   const scheduleDemoMessages = useMutation(api.admin.scheduleDemoMessages);
+  const [isPreparingDemo, setIsPreparingDemo] = useState(false);
   const [isCreatingDemoRooms, setIsCreatingDemoRooms] = useState(false);
   const [isSchedulingDemoMessages, setIsSchedulingDemoMessages] = useState(false);
   const [demoStatus, setDemoStatus] = useState<string | null>(null);
@@ -77,10 +79,39 @@ export default function AdminPage() {
               Admin portal
             </h1>
             <p className="mt-1 text-sm text-slate-600">
-              Manage users and rooms.
+              Manage users, rooms, and demo preparation.
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
+            <Button
+              variant="slate"
+              size="sm"
+              className="rounded-full px-3 py-1 text-xs font-semibold"
+              onClick={() => {
+                setDemoStatus(null);
+                setDemoError(null);
+                setIsPreparingDemo(true);
+                void prepareDemoData({})
+                  .then((result) => {
+                    setDemoStatus(
+                      `Prepared demo: ${result.roomCount} rooms, ${result.demoUserCount} demo users, ${result.seededMessages} seeded messages, ${result.scheduledMessages} scheduled messages. Cleared ${result.clearedRooms} previous demo rooms and ${result.clearedUsers} demo users.`,
+                    );
+                  })
+                  .catch((error) => {
+                    setDemoError(
+                      error instanceof Error ? error.message : String(error),
+                    );
+                  })
+                  .finally(() => {
+                    setIsPreparingDemo(false);
+                  });
+              }}
+              disabled={
+                isPreparingDemo || isCreatingDemoRooms || isSchedulingDemoMessages
+              }
+            >
+              {isPreparingDemo ? "Preparing demo..." : "Prepare full demo"}
+            </Button>
             <Button
               variant="outline"
               size="sm"
@@ -102,7 +133,9 @@ export default function AdminPage() {
                     setIsCreatingDemoRooms(false);
                   });
               }}
-              disabled={isCreatingDemoRooms || isSchedulingDemoMessages}
+              disabled={
+                isPreparingDemo || isCreatingDemoRooms || isSchedulingDemoMessages
+              }
             >
               {isCreatingDemoRooms ? "Creating demo rooms..." : "Demo rooms"}
             </Button>
@@ -129,7 +162,9 @@ export default function AdminPage() {
                     setIsSchedulingDemoMessages(false);
                   });
               }}
-              disabled={isCreatingDemoRooms || isSchedulingDemoMessages}
+              disabled={
+                isPreparingDemo || isCreatingDemoRooms || isSchedulingDemoMessages
+              }
             >
               {isSchedulingDemoMessages
                 ? "Scheduling demo messages..."
@@ -151,6 +186,19 @@ export default function AdminPage() {
         {demoError && (
           <p className="mt-2 text-xs font-medium text-rose-700">{demoError}</p>
         )}
+      </section>
+
+      <section className="rounded-3xl border border-slate-200 bg-white/70 p-6 shadow-xl shadow-slate-900/5">
+        <h2 className="text-base font-semibold text-slate-900">
+          How to demo in 60 seconds
+        </h2>
+        <ol className="mt-3 space-y-2 text-sm text-slate-600">
+          <li>1. Click Prepare full demo.</li>
+          <li>2. Open /app in two browser windows.</li>
+          <li>3. Enter one demo room and keep both windows visible.</li>
+          <li>4. Show live messages arriving in real time.</li>
+          <li>5. Send one manual message to confirm interaction.</li>
+        </ol>
       </section>
 
       <section className="rounded-3xl border border-slate-200 bg-white/70 p-6 shadow-xl shadow-slate-900/5">

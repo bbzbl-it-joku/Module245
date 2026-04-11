@@ -16,6 +16,11 @@ export default function RoomChatPage() {
   const roomId = params.roomId as Id<"rooms">;
   const [message, setMessage] = useState("");
   const [isSending, setIsSending] = useState(false);
+  const [membershipActionPending, setMembershipActionPending] = useState(false);
+  const [membershipActionError, setMembershipActionError] = useState<
+    string | null
+  >(null);
+  const [sendError, setSendError] = useState<string | null>(null);
   const [isNearBottom, setIsNearBottom] = useState(true);
   const [pauseStartCount, setPauseStartCount] = useState(0);
   const messagesContainerRef = useRef<HTMLDivElement | null>(null);
@@ -24,7 +29,7 @@ export default function RoomChatPage() {
 
   const rooms = useQuery(api.rooms.getRooms, {});
   const memberships = useQuery(api.memberships.getMyMemberships, {});
-  const messagesResult = useQuery(api.messages.getMessages, { roomId });
+  const messagesResult = useQuery(api.messages.getMessages, { roomId, limit: 250 });
 
   const joinRoom = useMutation(api.memberships.joinRoom);
   const leaveRoom = useMutation(api.memberships.leaveRoom);
@@ -155,17 +160,45 @@ export default function RoomChatPage() {
             size="sm"
             className="rounded-full px-3 py-1 text-xs font-semibold"
             onClick={() => {
+              setMembershipActionError(null);
+              setMembershipActionPending(true);
               if (isMember) {
-                void leaveRoom({ roomId });
+                void leaveRoom({ roomId })
+                  .catch((error) => {
+                    setMembershipActionError(
+                      error instanceof Error ? error.message : String(error),
+                    );
+                  })
+                  .finally(() => {
+                    setMembershipActionPending(false);
+                  });
               } else {
-                void joinRoom({ roomId });
+                void joinRoom({ roomId })
+                  .catch((error) => {
+                    setMembershipActionError(
+                      error instanceof Error ? error.message : String(error),
+                    );
+                  })
+                  .finally(() => {
+                    setMembershipActionPending(false);
+                  });
               }
             }}
+            disabled={membershipActionPending}
           >
-            {isMember ? "Leave" : "Join"}
+            {membershipActionPending
+              ? "Working..."
+              : isMember
+                ? "Leave"
+                : "Join"}
           </Button>
         </div>
       </div>
+      {membershipActionError && (
+        <p className="text-xs font-medium text-rose-700" role="alert">
+          {membershipActionError}
+        </p>
+      )}
 
       <div className="relative flex min-h-0 flex-1 flex-col gap-4 rounded-3xl border border-slate-200 bg-white/70 p-6 shadow-xl shadow-slate-900/5">
         <div
@@ -262,6 +295,7 @@ export default function RoomChatPage() {
           className="flex flex-wrap gap-3"
           onSubmit={(event) => {
             event.preventDefault();
+            setSendError(null);
             const draft = message.trim();
             if (!draft || !isMember || isSending) {
               return;
@@ -272,6 +306,9 @@ export default function RoomChatPage() {
               content: draft,
             })
               .then(() => setMessage(""))
+              .catch((error) => {
+                setSendError(error instanceof Error ? error.message : String(error));
+              })
               .finally(() => setIsSending(false));
           }}
         >
@@ -297,6 +334,11 @@ export default function RoomChatPage() {
         {!isMember && (
           <p className="text-xs text-slate-500">
             You must join the room before sending messages.
+          </p>
+        )}
+        {sendError && (
+          <p className="text-xs font-medium text-rose-700" role="alert">
+            {sendError}
           </p>
         )}
       </div>

@@ -9,6 +9,8 @@ import { Input } from "@/components/ui/input";
 
 export default function RoomsBrowsePage() {
   const [search, setSearch] = useState("");
+  const [actionRoomId, setActionRoomId] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const rooms = useQuery(api.rooms.getRooms, { search });
   const memberships = useQuery(api.memberships.getMyMemberships, {});
 
@@ -72,6 +74,11 @@ export default function RoomsBrowsePage() {
           value={search}
           onChange={(event) => setSearch(event.target.value)}
         />
+        {actionError && (
+          <p className="mt-3 text-xs font-medium text-rose-700" role="alert">
+            {actionError}
+          </p>
+        )}
         <div className="mt-4 flex max-h-130 flex-col gap-2 overflow-auto">
           {rooms.length === 0 ? (
             <div className="text-sm text-slate-500">No rooms yet.</div>
@@ -107,14 +114,30 @@ export default function RoomsBrowsePage() {
                         size="sm"
                         className="rounded-full px-3 py-1 text-xs font-semibold"
                         onClick={() => {
-                          if (joined) {
-                            void leaveRoom({ roomId: room._id });
-                          } else {
-                            void joinRoom({ roomId: room._id });
-                          }
+                          setActionError(null);
+                          setActionRoomId(room._id);
+                          const action = joined
+                            ? leaveRoom({ roomId: room._id })
+                            : joinRoom({ roomId: room._id });
+                          void action
+                            .catch((error) => {
+                              setActionError(
+                                error instanceof Error ? error.message : String(error),
+                              );
+                            })
+                            .finally(() => {
+                              setActionRoomId((current) =>
+                                current === room._id ? null : current,
+                              );
+                            });
                         }}
+                        disabled={actionRoomId === room._id}
                       >
-                        {joined ? "Leave" : "Join"}
+                        {actionRoomId === room._id
+                          ? "Working..."
+                          : joined
+                            ? "Leave"
+                            : "Join"}
                       </Button>
                     </div>
                   </div>

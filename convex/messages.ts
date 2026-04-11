@@ -29,6 +29,7 @@ async function isAdminUser(ctx: { db: QueryCtx["db"] }, userId: Id<"users">) {
 export const getMessages = query({
   args: {
     roomId: v.id("rooms"),
+    limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
@@ -50,20 +51,25 @@ export const getMessages = query({
         messages: [],
       };
     }
+    const limit = Math.max(1, Math.min(500, Math.floor(args.limit ?? 200)));
     const messages = await ctx.db
       .query("messages")
       .withIndex("by_roomId", (q) => q.eq("roomId", args.roomId))
       .order("desc")
-      .collect();
+      .take(limit);
     const ordered = messages.reverse();
     const uniqueUserIds = Array.from(
       new Set(ordered.map((message) => message.userId)),
     ) as Id<"users">[];
-    const userMap = new Map<Id<"users">, Doc<"users"> | null>();
-    for (const userId of uniqueUserIds) {
-      const author = await ctx.db.get("users", userId);
-      userMap.set(userId, author);
-    }
+    const userDocs = await Promise.all(
+      uniqueUserIds.map(async (authorId) => ({
+        userId: authorId,
+        user: await ctx.db.get("users", authorId),
+      })),
+    );
+    const userMap = new Map<Id<"users">, Doc<"users"> | null>(
+      userDocs.map(({ userId, user }) => [userId, user]),
+    );
     return {
       isMember: Boolean(membership),
       isAdmin,

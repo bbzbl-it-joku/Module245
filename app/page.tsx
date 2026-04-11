@@ -177,6 +177,43 @@ export default function Home() {
           ))}
         </section>
 
+        <section className="grid gap-6 md:grid-cols-[1.1fr_0.9fr]">
+          <div className="rounded-3xl border border-slate-200 bg-white/70 p-6 shadow-xl shadow-slate-900/5">
+            <h2 className="text-xl font-semibold text-slate-900">
+              Why this works for schools
+            </h2>
+            <p className="mt-3 text-sm text-slate-600">
+              StudyCorner keeps subject conversations in one shared place so
+              questions do not disappear in fragmented chats.
+            </p>
+            <div className="mt-4 grid grid-cols-3 gap-3 text-center">
+              <div className="rounded-2xl border border-slate-200 bg-white p-3">
+                <p className="text-lg font-semibold text-slate-900">Realtime</p>
+                <p className="text-[11px] text-slate-500">Convex live updates</p>
+              </div>
+              <div className="rounded-2xl border border-slate-200 bg-white p-3">
+                <p className="text-lg font-semibold text-slate-900">Public</p>
+                <p className="text-[11px] text-slate-500">Room-first discovery</p>
+              </div>
+              <div className="rounded-2xl border border-slate-200 bg-white p-3">
+                <p className="text-lg font-semibold text-slate-900">Secure</p>
+                <p className="text-[11px] text-slate-500">Server-side checks</p>
+              </div>
+            </div>
+          </div>
+          <div className="rounded-3xl border border-slate-200 bg-white/70 p-6 shadow-xl shadow-slate-900/5">
+            <h2 className="text-xl font-semibold text-slate-900">
+              Quick start in 60 seconds
+            </h2>
+            <ol className="mt-3 space-y-2 text-sm text-slate-600">
+              <li>1. Sign in and open two browser windows.</li>
+              <li>2. Join the same room in both windows.</li>
+              <li>3. Send one message and show instant sync.</li>
+              <li>4. Highlight member controls and room discovery.</li>
+            </ol>
+          </div>
+        </section>
+
         <section className="rounded-3xl border border-slate-200 bg-slate-900 px-8 py-10 text-white shadow-2xl shadow-slate-900/30">
           <div className="grid gap-8 md:grid-cols-[1.2fr_0.8fr] md:items-center">
             <div>

@@ -40,6 +40,14 @@ const DEMO_MESSAGE_TEMPLATES = [
   "Can we compare answers for this {subject} question?",
   "Any tips for improving speed in {subject} tasks?",
 ];
+const DEMO_CURATED_ROOMS: ReadonlyArray<{ name: string; subject: string }> = [
+  { name: "[Demo] Mathematics Exam prep", subject: "Mathematics" },
+  { name: "[Demo] Physics Concept deep dive", subject: "Physics" },
+  { name: "[Demo] History Weekly review", subject: "History" },
+  { name: "[Demo] Chemistry Homework support", subject: "Chemistry" },
+  { name: "[Demo] Biology Quick Q&A", subject: "Biology" },
+  { name: "[Demo] Computer Science Problem solving", subject: "Computer Science" },
+];
 
 function randomIntInclusive(min: number, max: number) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -184,6 +192,64 @@ async function ensureDemoUsers(ctx: MutationCtx, minimumCount: number) {
   return reusableDemoUsers.map((user) => user._id);
 }
 
+async function clearDemoDataRecords(ctx: MutationCtx) {
+  const rooms = await ctx.db.query("rooms").collect();
+  const demoRooms = rooms.filter((room) => isDemoRoom(room.name));
+  for (const room of demoRooms) {
+    await deleteRoomCascade(ctx, room._id);
+  }
+
+  const users = await ctx.db.query("users").collect();
+  const demoUsers = users.filter((user) => isDemoUser(user));
+  const demoUserIds = new Set(demoUsers.map((user) => user._id));
+
+  for (const demoUserId of demoUserIds) {
+    const memberships = await ctx.db
+      .query("memberships")
+      .withIndex("by_userId", (q) => q.eq("userId", demoUserId))
+      .collect();
+    for (const membership of memberships) {
+      await ctx.db.delete(membership._id);
+    }
+    const messages = await ctx.db
+      .query("messages")
+      .withIndex("by_userId", (q) => q.eq("userId", demoUserId))
+      .collect();
+    for (const message of messages) {
+      await ctx.db.delete(message._id);
+    }
+    const admin = await getAdminByUserId(ctx, demoUserId);
+    if (admin) {
+      await ctx.db.delete(admin._id);
+    }
+    await ctx.db.delete(demoUserId);
+  }
+
+  return {
+    deletedRooms: demoRooms.length,
+    deletedUsers: demoUsers.length,
+  };
+}
+
+async function createCuratedDemoRooms(
+  ctx: MutationCtx,
+  creatorId: Id<"users">,
+) {
+  const rooms: Array<{ roomId: Id<"rooms">; subject: string }> = [];
+  for (const room of DEMO_CURATED_ROOMS) {
+    const createdAt = Date.now();
+    const roomId = await ctx.db.insert("rooms", {
+      name: room.name,
+      subject: room.subject,
+      createdBy: creatorId,
+      createdAt,
+    });
+    await ensureMembership(ctx, roomId, creatorId, createdAt);
+    rooms.push({ roomId, subject: room.subject });
+  }
+  return rooms;
+}
+
 export const ensureFirstAdmin = mutation({
   args: {},
   handler: async (ctx) => {
@@ -291,6 +357,90 @@ export const listRooms = query({
       createdBy: room.createdBy,
       createdByEmail: creatorMap.get(room.createdBy)?.email ?? "Unknown",
     }));
+  },
+});
+
+export const clearDemoData = mutation({
+  args: {},
+  handler: async (ctx) => {
+    await requireAdmin(ctx);
+    return await clearDemoDataRecords(ctx);
+  },
+});
+
+export const prepareDemoData = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const adminUser = await requireAdmin(ctx);
+    const resetResult = await clearDemoDataRecords(ctx);
+    const demoRooms = await createCuratedDemoRooms(ctx, adminUser._id);
+    const demoUserIds = await ensureDemoUsers(ctx, 8);
+
+    let seededMessages = 0;
+    for (const room of demoRooms) {
+      const membershipsForRoom = demoUserIds.slice(0, randomIntInclusive(3, 6));
+      for (const demoUserId of membershipsForRoom) {
+        await ensureMembership(ctx, room.roomId, demoUserId, Date.now());
+      }
+      const initialMessages = randomIntInclusive(3, 6);
+      for (let index = 0; index < initialMessages; index += 1) {
+        const userId = pickRandom(membershipsForRoom);
+        await ctx.db.insert("messages", {
+          roomId: room.roomId,
+          userId,
+          content: pickRandom(DEMO_MESSAGE_TEMPLATES).replace(
+            /\{subject\}/g,
+            room.subject,
+          ),
+          timestamp: Date.now() + index * 300,
+        });
+        seededMessages += 1;
+      }
+    }
+
+    const cycleCount = 10;
+    let cycleDelayMs = 0;
+    let scheduledMessages = 0;
+    for (let cycle = 0; cycle < cycleCount; cycle += 1) {
+      cycleDelayMs += randomIntInclusive(400, 1400);
+      for (const room of demoRooms) {
+        const messagesThisCycle = randomIntInclusive(1, 2);
+        for (let index = 0; index < messagesThisCycle; index += 1) {
+          const messageDelayMs = cycleDelayMs + index * randomIntInclusive(120, 300);
+          const userId = pickRandom(demoUserIds);
+          await ensureMembership(
+            ctx,
+            room.roomId,
+            userId,
+            Date.now() + messageDelayMs,
+          );
+          await ctx.scheduler.runAfter(
+            messageDelayMs,
+            internal.admin.insertScheduledDemoMessage,
+            {
+              roomId: room.roomId,
+              userId,
+              content: pickRandom(DEMO_MESSAGE_TEMPLATES).replace(
+                /\{subject\}/g,
+                room.subject,
+              ),
+              timestamp: Date.now() + messageDelayMs,
+            },
+          );
+          scheduledMessages += 1;
+        }
+      }
+    }
+
+    return {
+      clearedRooms: resetResult.deletedRooms,
+      clearedUsers: resetResult.deletedUsers,
+      roomCount: demoRooms.length,
+      demoUserCount: demoUserIds.length,
+      seededMessages,
+      scheduledMessages,
+      cycleCount,
+    };
   },
 });
 
@@ -439,11 +589,11 @@ export const insertScheduledDemoMessage = internalMutation({
   handler: async (ctx, args) => {
     const room = await ctx.db.get(args.roomId);
     if (!room) {
-      throw new Error("Room not found");
+      return null;
     }
     const user = await ctx.db.get(args.userId);
     if (!user) {
-      throw new Error("User not found");
+      return null;
     }
     const message = args.content.trim();
     if (!message) {

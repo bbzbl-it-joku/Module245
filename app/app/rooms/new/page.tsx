@@ -12,6 +12,8 @@ import { Input } from "@/components/ui/input";
 export default function NewRoomPage() {
   const [roomName, setRoomName] = useState("");
   const [roomSubject, setRoomSubject] = useState("");
+  const [isCreating, setIsCreating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const createRoom = useMutation(api.rooms.createRoom);
   const router = useRouter();
 
@@ -38,17 +40,31 @@ export default function NewRoomPage() {
         className="mt-6 flex max-w-xl flex-col gap-3"
         onSubmit={(event) => {
           event.preventDefault();
+          setError(null);
           if (!roomName.trim() || !roomSubject.trim()) {
+            setError("Room name and subject are required.");
             return;
           }
+          setIsCreating(true);
           void createRoom({
             name: roomName.trim(),
             subject: roomSubject.trim(),
-          }).then((roomId) => {
-            setRoomName("");
-            setRoomSubject("");
-            router.push(`/app/rooms/${roomId as Id<"rooms">}`);
-          });
+          })
+            .then((roomId) => {
+              setRoomName("");
+              setRoomSubject("");
+              router.push(`/app/rooms/${roomId as Id<"rooms">}`);
+            })
+            .catch((mutationError) => {
+              setError(
+                mutationError instanceof Error
+                  ? mutationError.message
+                  : String(mutationError),
+              );
+            })
+            .finally(() => {
+              setIsCreating(false);
+            });
         }}
       >
         <Input
@@ -64,8 +80,13 @@ export default function NewRoomPage() {
           onChange={(event) => setRoomSubject(event.target.value)}
         />
         <div className="flex flex-wrap gap-3">
-          <Button variant="slate" className="rounded-2xl" type="submit">
-            Create room
+          <Button
+            variant="slate"
+            className="rounded-2xl"
+            type="submit"
+            disabled={isCreating}
+          >
+            {isCreating ? "Creating..." : "Create room"}
           </Button>
           <Link
             href="/app"
@@ -74,6 +95,11 @@ export default function NewRoomPage() {
             Cancel
           </Link>
         </div>
+        {error && (
+          <p className="text-sm font-medium text-rose-700" role="alert">
+            {error}
+          </p>
+        )}
       </form>
     </section>
   );
