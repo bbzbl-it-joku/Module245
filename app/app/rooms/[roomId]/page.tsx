@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
@@ -10,10 +10,17 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 export default function RoomChatPage() {
+  const NEAR_BOTTOM_THRESHOLD_PX = 96;
   const params = useParams<{ roomId: string }>();
   const router = useRouter();
   const roomId = params.roomId as Id<"rooms">;
   const [message, setMessage] = useState("");
+  const [isSending, setIsSending] = useState(false);
+  const [isNearBottom, setIsNearBottom] = useState(true);
+  const [pauseStartCount, setPauseStartCount] = useState(0);
+  const messagesContainerRef = useRef<HTMLDivElement | null>(null);
+  const initialScrollDoneRef = useRef(false);
+  const lastMessageCountRef = useRef(0);
 
   const rooms = useQuery(api.rooms.getRooms, {});
   const memberships = useQuery(api.memberships.getMyMemberships, {});
@@ -40,15 +47,55 @@ export default function RoomChatPage() {
   const currentUserId = messagesResult?.currentUserId ?? null;
   const canAccess = isAdmin || isMember;
   const messages = messagesResult?.messages ?? [];
+  const unreadCount = isNearBottom
+    ? 0
+    : Math.max(0, messages.length - pauseStartCount);
   const shouldRedirect = Boolean(
     activeRoom && memberships && messagesResult && !canAccess,
   );
+
+  const scrollToBottom = (behavior: ScrollBehavior = "auto") => {
+    const container = messagesContainerRef.current;
+    if (!container) {
+      return;
+    }
+    container.scrollTo({
+      top: container.scrollHeight,
+      behavior,
+    });
+  };
 
   useEffect(() => {
     if (shouldRedirect) {
       router.replace("/app/rooms");
     }
   }, [router, shouldRedirect]);
+
+  useEffect(() => {
+    if (!canAccess) {
+      return;
+    }
+    if (!initialScrollDoneRef.current) {
+      scrollToBottom("auto");
+      initialScrollDoneRef.current = true;
+      lastMessageCountRef.current = messages.length;
+      return;
+    }
+    const previousCount = lastMessageCountRef.current;
+    if (messages.length > previousCount) {
+      if (isNearBottom) {
+        scrollToBottom("auto");
+      }
+    } else if (messages.length < previousCount && isNearBottom) {
+      scrollToBottom("auto");
+    }
+    lastMessageCountRef.current = messages.length;
+  }, [messages.length, canAccess, isNearBottom]);
+
+  useEffect(() => {
+    initialScrollDoneRef.current = false;
+    lastMessageCountRef.current = 0;
+  }, [roomId]);
 
   if (!rooms) {
     return (
@@ -83,7 +130,7 @@ export default function RoomChatPage() {
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex h-[calc(100dvh-10.5rem)] min-h-0 flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <Link
@@ -120,10 +167,30 @@ export default function RoomChatPage() {
         </div>
       </div>
 
-      <div className="flex min-h-130 flex-col gap-4 rounded-3xl border border-slate-200 bg-white/70 p-6 shadow-xl shadow-slate-900/5">
-        <div className="flex-1 overflow-auto rounded-2xl border border-slate-200 bg-white/80 p-4">
+      <div className="relative flex min-h-0 flex-1 flex-col gap-4 rounded-3xl border border-slate-200 bg-white/70 p-6 shadow-xl shadow-slate-900/5">
+        <div
+          ref={messagesContainerRef}
+          onScroll={(event) => {
+            const container = event.currentTarget;
+            const distanceToBottom =
+              container.scrollHeight - container.scrollTop - container.clientHeight;
+            const nearBottom = distanceToBottom <= NEAR_BOTTOM_THRESHOLD_PX;
+            if (nearBottom) {
+              if (!isNearBottom) {
+                setIsNearBottom(true);
+                setPauseStartCount(messages.length);
+              }
+            } else if (isNearBottom) {
+              setIsNearBottom(false);
+              setPauseStartCount(messages.length);
+            }
+          }}
+          className="min-h-0 flex-1 overflow-y-auto rounded-2xl border border-slate-200 bg-white/80 p-4"
+        >
           {canAccess ? (
-            messages.length === 0 ? (
+            !messagesResult ? (
+              <p className="text-sm text-slate-500">Loading messages...</p>
+            ) : messages.length === 0 ? (
               <p className="text-sm text-slate-500">No messages yet.</p>
             ) : (
               <div className="flex flex-col gap-3">
@@ -174,18 +241,38 @@ export default function RoomChatPage() {
             </p>
           )}
         </div>
+        {canAccess && unreadCount > 0 && (
+          <div className="pointer-events-none absolute inset-x-0 bottom-24 flex justify-center px-6">
+            <Button
+              variant="slate"
+              size="sm"
+              className="pointer-events-auto rounded-full px-4 py-2 text-xs font-semibold shadow-lg shadow-slate-900/15"
+              onClick={() => {
+                scrollToBottom("smooth");
+                setIsNearBottom(true);
+                setPauseStartCount(messages.length);
+              }}
+            >
+              Jump to latest ({unreadCount})
+            </Button>
+          </div>
+        )}
 
         <form
           className="flex flex-wrap gap-3"
           onSubmit={(event) => {
             event.preventDefault();
-            if (!message.trim() || !isMember) {
+            const draft = message.trim();
+            if (!draft || !isMember || isSending) {
               return;
             }
+            setIsSending(true);
             void sendMessage({
               roomId,
-              content: message.trim(),
-            }).then(() => setMessage(""));
+              content: draft,
+            })
+              .then(() => setMessage(""))
+              .finally(() => setIsSending(false));
           }}
         >
           <Input
@@ -196,15 +283,15 @@ export default function RoomChatPage() {
             }
             value={message}
             onChange={(event) => setMessage(event.target.value)}
-            disabled={!isMember}
+            disabled={!isMember || isSending}
           />
           <Button
             variant="emerald"
             className="rounded-2xl px-5 py-2 text-sm"
             type="submit"
-            disabled={!isMember}
+            disabled={!isMember || isSending}
           >
-            Send
+            {isSending ? "Sending..." : "Send"}
           </Button>
         </form>
         {!isMember && (

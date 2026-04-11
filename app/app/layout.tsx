@@ -72,7 +72,7 @@ export default function AppLayout({
           </div>
         </div>
       </header>
-      <main className="relative z-10 mx-auto flex max-w-6xl flex-col gap-6 px-6 py-10">
+      <main className="relative z-10 mx-auto flex max-w-6xl min-h-0 flex-col gap-6 px-6 py-10">
         {isLoading ? (
           <LoadingState label="Loading session..." />
         ) : isAuthenticated ? (

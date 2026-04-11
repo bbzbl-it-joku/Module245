@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
@@ -13,6 +14,12 @@ export default function AdminPage() {
   const setAdminStatus = useMutation(api.admin.setAdminStatus);
   const deleteUser = useMutation(api.admin.deleteUser);
   const deleteRoom = useMutation(api.admin.deleteRoom);
+  const createDemoRooms = useMutation(api.admin.createDemoRooms);
+  const scheduleDemoMessages = useMutation(api.admin.scheduleDemoMessages);
+  const [isCreatingDemoRooms, setIsCreatingDemoRooms] = useState(false);
+  const [isSchedulingDemoMessages, setIsSchedulingDemoMessages] = useState(false);
+  const [demoStatus, setDemoStatus] = useState<string | null>(null);
+  const [demoError, setDemoError] = useState<string | null>(null);
 
   if (isAdmin === undefined) {
     return (
@@ -73,15 +80,77 @@ export default function AdminPage() {
               Manage users and rooms.
             </p>
           </div>
-          <a
-            href="https://dashboard.convex.dev/t/bbzbl-it/module245/artful-mole-102"
-            target="_blank"
-            rel="noreferrer"
-            className="rounded-full border border-slate-300 bg-white/60 px-4 py-2 text-xs font-semibold uppercase tracking-widest text-slate-700 transition hover:border-slate-400"
-          >
-            Open Convex dashboard
-          </a>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="rounded-full px-3 py-1 text-xs font-semibold"
+              onClick={() => {
+                setDemoStatus(null);
+                setDemoError(null);
+                setIsCreatingDemoRooms(true);
+                void createDemoRooms({ count: 6 })
+                  .then((result) => {
+                    setDemoStatus(`Created ${result.createdCount} demo rooms.`);
+                  })
+                  .catch((error) => {
+                    setDemoError(
+                      error instanceof Error ? error.message : String(error),
+                    );
+                  })
+                  .finally(() => {
+                    setIsCreatingDemoRooms(false);
+                  });
+              }}
+              disabled={isCreatingDemoRooms || isSchedulingDemoMessages}
+            >
+              {isCreatingDemoRooms ? "Creating demo rooms..." : "Demo rooms"}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="rounded-full px-3 py-1 text-xs font-semibold"
+              onClick={() => {
+                setDemoStatus(null);
+                setDemoError(null);
+                setIsSchedulingDemoMessages(true);
+                void scheduleDemoMessages({})
+                  .then((result) => {
+                    setDemoStatus(
+                      `Scheduled ${result.scheduledMessages} messages across ${result.roomCount} demo rooms in ${result.cycleCount} cycles.`,
+                    );
+                  })
+                  .catch((error) => {
+                    setDemoError(
+                      error instanceof Error ? error.message : String(error),
+                    );
+                  })
+                  .finally(() => {
+                    setIsSchedulingDemoMessages(false);
+                  });
+              }}
+              disabled={isCreatingDemoRooms || isSchedulingDemoMessages}
+            >
+              {isSchedulingDemoMessages
+                ? "Scheduling demo messages..."
+                : "Demo messages"}
+            </Button>
+            <a
+              href="https://dashboard.convex.dev/t/bbzbl-it/module245/artful-mole-102"
+              target="_blank"
+              rel="noreferrer"
+              className="rounded-full border border-slate-300 bg-white/60 px-4 py-2 text-xs font-semibold uppercase tracking-widest text-slate-700 transition hover:border-slate-400"
+            >
+              Open Convex dashboard
+            </a>
+          </div>
         </div>
+        {demoStatus && (
+          <p className="mt-3 text-xs font-medium text-emerald-700">{demoStatus}</p>
+        )}
+        {demoError && (
+          <p className="mt-2 text-xs font-medium text-rose-700">{demoError}</p>
+        )}
       </section>
 
       <section className="rounded-3xl border border-slate-200 bg-white/70 p-6 shadow-xl shadow-slate-900/5">

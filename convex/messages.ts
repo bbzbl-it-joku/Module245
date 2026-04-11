@@ -54,7 +54,7 @@ export const getMessages = query({
       .query("messages")
       .withIndex("by_roomId", (q) => q.eq("roomId", args.roomId))
       .order("desc")
-      .take(100);
+      .collect();
     const ordered = messages.reverse();
     const uniqueUserIds = Array.from(
       new Set(ordered.map((message) => message.userId)),
@@ -68,16 +68,28 @@ export const getMessages = query({
       isMember: Boolean(membership),
       isAdmin,
       currentUserId: userId,
-      messages: ordered.map((message) => ({
-        _id: message._id,
-        content: message.content,
-        timestamp: message.timestamp,
-        userId: message.userId,
-        author: userMap.get(message.userId)?.email ?? "Unknown",
-      })),
+      messages: ordered.map((message) =>
+        formatMessageWithAuthor(message, userMap),
+      ),
     };
   },
 });
+
+function formatMessageWithAuthor(
+  message: Doc<"messages">,
+  userMap: Map<Id<"users">, Doc<"users"> | null>,
+) {
+  return {
+    _id: message._id,
+    content: message.content,
+    timestamp: message.timestamp,
+    userId: message.userId,
+    author:
+      userMap.get(message.userId)?.name ??
+      userMap.get(message.userId)?.email ??
+      "Unknown",
+  };
+}
 
 export const sendMessage = mutation({
   args: {
