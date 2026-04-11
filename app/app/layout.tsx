@@ -51,10 +51,10 @@ export default function AppLayout({
       <header className="relative z-10 border-b border-slate-200/80 bg-white/70 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
           <div className="flex items-center gap-3">
-            <span className="h-2 w-2 rounded-full bg-emerald-500" />
+            <span className="h-2 w-2 rounded-full bg-emerald-600" />
             <Link
-              href="/"
-              className="text-base font-semibold text-slate-900 transition hover:text-slate-700"
+              href="/app"
+              className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-700 transition hover:text-slate-900"
             >
               StudyCorner
             </Link>

@@ -34,13 +34,7 @@ export default function RoomsLandingPage() {
       <section className="rounded-3xl border border-slate-200 bg-white/70 p-6 shadow-xl shadow-slate-900/5">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
-            <Link
-              href="/"
-              className="inline-flex items-center rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold uppercase tracking-widest text-white shadow-lg shadow-slate-900/20 transition hover:-translate-y-0.5"
-            >
-              Back home
-            </Link>
-            <h1 className="mt-4 text-xl font-semibold text-slate-900">
+            <h1 className="text-xl font-semibold text-slate-900">
               Joined rooms
             </h1>
             <p className="mt-1 text-sm text-slate-600">

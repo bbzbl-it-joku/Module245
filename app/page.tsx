@@ -1,11 +1,31 @@
 "use client";
 
 import Link from "next/link";
-import { useConvexAuth } from "convex/react";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
+import { useConvexAuth, useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
 
 export default function Home() {
   const { isAuthenticated, isLoading } = useConvexAuth();
+  const rooms = useQuery(api.rooms.getRooms, {});
+  const router = useRouter();
   const showSignIn = !isLoading && !isAuthenticated;
+  const livePreviewRooms = rooms?.slice(0, 3) ?? [];
+
+  useEffect(() => {
+    if (!isLoading && isAuthenticated) {
+      router.replace("/app");
+    }
+  }, [isAuthenticated, isLoading, router]);
+
+  if (isLoading || isAuthenticated) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-linear-to-br from-amber-50 via-slate-50 to-emerald-50 text-slate-600">
+        Loading dashboard...
+      </div>
+    );
+  }
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-linear-to-br from-amber-50 via-slate-50 to-emerald-50 text-slate-900">
@@ -39,12 +59,14 @@ export default function Home() {
                 Sign in
               </Link>
             )}
-            <Link
-              href="/app"
-              className="rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold uppercase tracking-widest text-white shadow-lg shadow-slate-900/20 transition hover:-translate-y-0.5"
-            >
-              Open app
-            </Link>
+            {!isLoading && isAuthenticated && (
+              <Link
+                href="/app"
+                className="rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold uppercase tracking-widest text-white shadow-lg shadow-slate-900/20 transition hover:-translate-y-0.5"
+              >
+                Open app
+              </Link>
+            )}
           </div>
         </div>
       </header>
@@ -95,20 +117,30 @@ export default function Home() {
               </span>
             </div>
             <div className="mt-6 space-y-4">
-              {[
-                { title: "Physics: Waves" },
-                { title: "Math: Derivatives" },
-                { title: "History: WWI" },
-              ].map((room) => (
-                <div
-                  key={room.title}
-                  className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
-                >
-                  <p className="text-sm font-semibold text-slate-900">
-                    {room.title}
-                  </p>
+              {!rooms ? (
+                <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                  <p className="text-sm text-slate-500">Loading live rooms...</p>
                 </div>
-              ))}
+              ) : livePreviewRooms.length === 0 ? (
+                <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                  <p className="text-sm text-slate-500">No active rooms yet.</p>
+                </div>
+              ) : (
+                livePreviewRooms.map((room) => (
+                  <div
+                    key={room._id}
+                    className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
+                  >
+                    <p className="text-sm font-semibold text-slate-900">
+                      {room.name}
+                    </p>
+                    <p className="mt-1 text-xs text-slate-500">{room.subject}</p>
+                    <p className="mt-2 text-[11px] font-semibold text-emerald-700">
+                      {room.memberCount} members
+                    </p>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </section>

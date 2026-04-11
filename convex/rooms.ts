@@ -33,7 +33,12 @@ export const getRooms = query({
       }),
     );
 
-    return roomsWithCounts;
+    return roomsWithCounts.sort((a, b) => {
+      if (b.memberCount !== a.memberCount) {
+        return b.memberCount - a.memberCount;
+      }
+      return b.createdAt - a.createdAt;
+    });
   },
 });
 

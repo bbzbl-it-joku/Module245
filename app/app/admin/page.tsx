@@ -73,6 +73,14 @@ export default function AdminPage() {
               Manage users and rooms.
             </p>
           </div>
+          <a
+            href="https://dashboard.convex.dev/t/bbzbl-it/module245/artful-mole-102"
+            target="_blank"
+            rel="noreferrer"
+            className="rounded-full border border-slate-300 bg-white/60 px-4 py-2 text-xs font-semibold uppercase tracking-widest text-slate-700 transition hover:border-slate-400"
+          >
+            Open Convex dashboard
+          </a>
         </div>
       </section>
 

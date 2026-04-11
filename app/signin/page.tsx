@@ -1,9 +1,10 @@
 "use client";
 
 import { useAuthActions } from "@convex-dev/auth/react";
+import { useConvexAuth } from "convex/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,6 +15,23 @@ export default function SignIn() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const { isAuthenticated, isLoading } = useConvexAuth();
+  const homeHref = !isLoading && isAuthenticated ? "/app" : "/";
+
+  useEffect(() => {
+    if (!isLoading && isAuthenticated) {
+      router.replace("/app");
+    }
+  }, [isAuthenticated, isLoading, router]);
+
+  if (isLoading || isAuthenticated) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-linear-to-br from-amber-50 via-slate-50 to-emerald-50 text-slate-600">
+        Loading dashboard...
+      </div>
+    );
+  }
+
   return (
     <div className="relative min-h-screen overflow-hidden bg-linear-to-br from-amber-50 via-slate-50 to-emerald-50 text-slate-900">
       <div
@@ -39,17 +57,19 @@ export default function SignIn() {
           </div>
           <div className="flex items-center gap-3">
             <Link
-              href="/"
+              href={homeHref}
               className="text-sm font-semibold text-slate-700 transition hover:text-slate-900"
             >
               Back home
             </Link>
-            <Link
-              href="/app"
-              className="rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold uppercase tracking-widest text-white shadow-lg shadow-slate-900/20 transition hover:-translate-y-0.5"
-            >
-              Open app
-            </Link>
+            {!isLoading && isAuthenticated && (
+              <Link
+                href="/app"
+                className="rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold uppercase tracking-widest text-white shadow-lg shadow-slate-900/20 transition hover:-translate-y-0.5"
+              >
+                Open app
+              </Link>
+            )}
           </div>
         </div>
       </header>
